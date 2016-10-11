@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>SF X Next Bus</title>
+
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="http://d3js.org/queue.v1.min.js"></script>
+    <script src="http://d3js.org/topojson.v1.min.js"></script>
+    <script src="jquery-3.1.1.min.js"></script>
+    <!-- Latest compiled and minified CSS -->  
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script type"text/javascript" src="bootstrap-dropdown-checkbox/js/bootstrap-dropdown-checkbox.js"></script>
+  </head>
+  <style type="text/css">
+  
+  #titleDiv{
+  position:absolute;
+  float:left; 
+  top:20px; 
+  left: 20px; 
+ 
+}
+  #mapDiv{
+  position:absolute;
+  float:left; 
+  top:100px; 
+  left:0px;  
+}
+
+  .routeDropdownCheckbox{
+  position:absolute;
+  float:left; 
+  top:300px; 
+  left: 90%; 
+ 
+}
+  #airbnb{
+  position:absolute;
+  float:left; 
+  top:270px; 
+  left: 90%; 
+
+
+}
+  </style>
+  <link rel="stylesheet" type="text/css" href="bootstrap-dropdown-checkbox/css/bootstrap-dropdown-checkbox.css">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+  <body>
+
+  <div class="routeDropdownCheckbox"></div>
+  <div id="titleDiv"></div>
+  <div id="uiElements"></div>
+  <div id="mapDiv"></div>
+  <button id="airbnb" >Toggle AirBNB</button>
+
+  <script type="text/javascript" src="visscript.js"></script>
+
+  </body>
+</html>
