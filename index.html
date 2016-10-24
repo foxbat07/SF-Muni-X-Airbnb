@@ -18,13 +18,13 @@
   position:absolute;
   float:left; 
   top:20px; 
-  left: 20px; 
+  left: 70%; 
  
 }
   #mapDiv{
   position:absolute;
   float:left; 
-  top:100px; 
+  top:0px; 
   left:0px;  
 }
 
@@ -32,21 +32,21 @@
   position:absolute;
   float:left; 
   top:300px; 
-  left: 90%; 
+  left: 85%; 
  
 }
   #airbnb{
   position:absolute;
   float:left; 
   top:240px; 
-  left: 90%; 
+  left: 85%; 
 }
 
 #legendDiv{
   position:absolute;
   float:left; 
-  top:100px; 
-  left: 90%;
+  top:80%; 
+  left: 85%;
   height: 40px;  
   }
 
@@ -54,15 +54,36 @@
   position:absolute;
   float:left; 
   top:270px; 
-  left: 90%; 
+  left: 85%; 
 }
 
-svg .line {
-  fill: none;
-  stroke-opacity: .8;
-  stroke-dasharray: 3,2;
-  stroke: #f44;
+#dataDiv{
+  position:absolute;
+  float:left; 
+  top:100px; 
+  left: 70%; 
 }
+
+#locationDiv{
+  position:absolute;
+  float:left; 
+  top:210px; 
+  left: 85%; 
+}
+
+
+svg .path {
+  fill: none;
+  stroke-width: 3;
+  stroke: #ff0000;
+}
+
+svg .muniPath {
+  fill: none;
+  stroke-width: 3;
+  stroke: #00ff00;
+}
+
 
   
 
@@ -76,8 +97,10 @@ svg .line {
   <div id="titleDiv"></div>
   <div id="uiElements"></div>
   <div id="mapDiv"></div>
+  <div id="dataDiv"></div>
+  <button id="locationDiv">Muni Location</div>
   <button id="airbnb" >Toggle AirBNB</button>
-  <button id="showRoutePaths" >Show Route Paths</button>
+  <button id="showRoutePaths" >Route Paths</button>
 <div id="legendDiv"></div>
   <script type="text/javascript" src="visscript.js"></script>
 

@@ -1,8 +1,15 @@
+      //works best with safari
+      //http://stackoverflow.com/questions/35049842/svgs-in-chrome-sometimes-dont-render
+
       //default map colors
       var neighborhoodColor = '#EEEEEE';
-      var streetColor = '#333333';
-      var highlightColor = '#66A0FF';
+      var streetColor = '#777777';
+      var highlightColor = '#BBBBBB';
+      var muniColor = '#22A0FF';
+      var pathColor = '#11A0AA';
       var airbnbColor = '#FF6347';
+
+      //initial variables
 
       var xMargin = 20;
       var yMargin = 40;
@@ -12,15 +19,31 @@
       var liveRoute = [];// live route 
 
       var epochTime = (new Date).getTime();
-      var width = 1200;     // hard coding svg for prototype
+      var width = 1080;     // hard coding svg for prototype
       var height = 1080;
-      var toggleAirbnb = false;
+      var toggleAirbnb = true;
       var toggleLiveData = true;
-
       var showRoutePath = true;
-      var drawMap = false;
+      var drawMap = true;
+
+      // to change order of svg elements via stackoverflow
+      d3.selection.prototype.moveToFront = function() {
+        return this.each(function(){
+          this.parentNode.appendChild(this);
+        });
+      };
+
+      d3.selection.prototype.moveToBack = function() { 
+          return this.each(function() { 
+              var firstChild = this.parentNode.firstChild; 
+              if (firstChild) { 
+                  this.parentNode.insertBefore(this, firstChild); 
+              } 
+          }); 
+      };
 
 
+      //set title , clean up later
       d3.select("#titleDiv").append("text")                       
                        .attr("x",xMargin)
                        .attr("y",yMargin)
@@ -28,7 +51,7 @@
                        .style("font-size","24px")
                        .style("text-anchor","left")
                        .style("fill",'grey')
-                       .text("Airbnb X SF Muni\n");
+                       .text("Airbnb X SF Muni");
 
       d3.select("#titleDiv").append("p")                       
                        .attr("x",xMargin)
@@ -40,6 +63,7 @@
                        .text("Correlating the proximity of Airbnb's to SF MUNI");
 
      
+      //Initialize Map
 
       var svg = d3.select("#mapDiv").append("svg")
                     .attr("width", width)
@@ -73,7 +97,7 @@
             error: function(){alert("Error: check console");}
             });
 
-    $.ajax('http://webservices.nextbus.com/service/publicXMLFeed?command=routeConfig&a=sf-muni&r=N', {
+    $.ajax('http://webservices.nextbus.com/service/publicXMLFeed?command=routeConfig&a=sf-muni&r=E', {
             dataType:'xml',
             data:{},
             type:'GET',
@@ -91,130 +115,202 @@
 
    console.log( "ran ajax call!" ); 
 
+   //main function, loading data
+
    function loadJsonData(error, neighborhoods, streets,airbnblisting) {
             console.log("running loadJsonData");
             if (error) return console.error(error);
             
             //var myData = [{id: 1, label: "Test" },{id: 2, label: "Test 2" }];
 
+            // create basic UI elements
             $(".routeDropdownCheckbox").dropdownCheckbox({
               data: routeList,
               autosearch: true,
               title: "Select Routes"
             }); //future work , implement auto-search
 
-            $(".routeDropdownCheckbox").dropdownCheckbox("checked");
+             $(".routeDropdownCheckbox").click(function(){
+
+               var updatedData = $(".routeDropdownCheckbox").dropdownCheckbox("checked");
+               console.log(updatedData);
+             })
+           
 
             $( "button[id|='airbnb']" ).click(function() {               
-                                         toggleAirbnb =!toggleAirbnb;                                       
-                                         console.log("toggleAirbnb toggle",toggleAirbnb);  
+                                         toggleAirbnb =!toggleAirbnb;   
+                                         // Determine if current airbnb is visible
+                                          var active   = airbnbcircle.active ? false : true,
+                                          newOpacity = active ? 0 : 0.2;
+                                          // Hide or show the elements
+                                          d3.selectAll("#airbnbcircle").style("opacity", newOpacity);
+                                           
+                                          var sel = d3.select( "#airbnbcircle" );    // moveToFront;
+                                          sel.moveToFront();
+                                          airbnbcircle.active = active;                                    
+                                          console.log("toggleAirbnb toggle",toggleAirbnb);  
+
                                       });
 
-             $( "button[id|='showRoutePath']" ).click(function() {               
-                                         showRoutePath =!showRoutePath;                                        
+            $( "button[id|='showRoutePaths']" ).click(function() {               
+                                          //showRoutePath =!showRoutePath;                      
+                                          // Determine if current path is visible
+                                          var active   = muniPaths.active ? false : true;
+                                          newOpacity = active ? 0 : 0.7;
+                                          // Hide or show the elements
+                                          d3.selectAll("#muniPaths").style("opacity", newOpacity);                                           
+                                          var sel = d3.select( "#muniPaths" );    // moveToFront;
+                                          sel.moveToFront();
+                                          muniPaths.active = active;                
                                          console.log("showRoutePath toggle",showRoutePath);  
                                       });
+
+            $( "button[id|='locationDiv']" ).click(function() {               
+                                         //showRoutePath =!showRoutePath;                      
+                                          // Determine if triangles is visible
+                                          var active   = muniLocation.active ? false : true,
+                                          newOpacity = active ? 0 : 0.7;
+                                          // Hide or show the elements
+                                          d3.selectAll("#muniLocation").style("opacity", newOpacity);                                           
+                                          var sel = d3.select( "#muniLocation" );    // moveToFront;
+                                          sel.moveToFront();
+                                          muniLocation.active = active;                
+                                         console.log("locationDiv toggle");  
+
+                                      });
+
+
+
 
            
             
             d3.select("#mapDiv").select("svg").remove();
             svg = d3.select("#mapDiv").append("svg").attr("width", width).attr("height", height);
+            g = svg.append("g");  //group base map to g
+
+
+            //background
+            g.append("rect")
+              .attr("width", "75%")
+              .attr("height", "100%")
+              .attr("fill", "blue")
+              .style("opacity",0.1);
 
             if (drawMap)
             {
-              var neighboorSVG = svg.selectAll('path')
-                                    .data(neighborhoods.features)
-                                    .enter()
-                                    .append("path")
-                                    .attr("d",path)
-                                    .style('fill', neighborhoodColor )
-                                    .style('stroke','black')
-                                    .on('mouseover', mouseover)
-                                    .on('mouseout', mouseout);         
+              var neighboorSVG = g.selectAll('path')
+                                  .data(neighborhoods.features)
+                                  .enter()
+                                  .append("path")
+                                  .attr("d",path)
+                                  .attr("class", "neighboorMap")
+                                  .style('fill', neighborhoodColor )
+                                  .style('stroke','black')
+                                  .on('mouseover', mouseover)
+                                  .on('mouseout', mouseout);         
             //draw neighbourhood first, then the streets
                                     
-            var streetSVG = svg.selectAll('path')
-                                    .data(streets.features)
-                                    .enter()
-                                    .append("path")
-                                    .attr("d",path)
-                                    .style('stroke',streetColor);
-                                    // .on('mouseover', mouseover)
-                                    // .on('mouseout', mouseout);     
-            }
-                                 
-            // add zoom in,zoom out on click, additional mosue events
-
+            var streetSVG = g.selectAll('path')
+                            .data(streets.features)
+                            .enter()
+                            .append("path")
+                            .attr("class", "streetMap")
+                            .attr("d",path)
+                            .style('stroke',streetColor);
+     
             
-            if(toggleAirbnb ==true)
-                   {
-                    
-                    // add airbnb listings
-                     svg.selectAll("circle")
-                        .data(airbnblisting)
-                        .enter()
-                        .append("circle")
-                        .attr("d", path)
-                        .attr("cx", function (d) { return projection([d.longitude,d.latitude])[0];})
-                        .attr("cy", function (d) { return projection([d.longitude,d.latitude])[1];})
-                        .attr("r", "2px")
-                        .attr("fill", airbnbColor)
-                        .attr("opacity",0.6);
-                   }
+            }
+            // add zoom in,zoom out on click, additional mosue events
+   
+            // add airbnb listings
+             svg.selectAll("circle.airbnb")
+                .data(airbnblisting)
+                .enter()
+                .append("svg:circle")
+                .attr("class","airbnb")
+                .attr("id", "airbnbcircle")
+                .attr("d", path)
+              
+                .attr("cx", function (d) { return projection([d.longitude,d.latitude])[0];})
+                .attr("cy", function (d) { return projection([d.longitude,d.latitude])[1];})
+                .attr("r", "3px")
+                .attr("fill", airbnbColor)
+                .style("opacity",0.2);
+            
             //console.log("airbnblisting:",airbnblisting)
+            //future work: sclae based on ratings, price/night etc 
+
+                     var triangles = svg.selectAll("triangles")
+                                    .append("triangles")
+                                    .data(liveRoute)
+                                    .enter()  
+                                    .append("path")
+                                    .attr("class","triangle")
+                                    .attr("id","muniLocation") 
+                                    .attr("d", d3.svg.symbol().type("triangle-up"))
+                                    .attr("transform", function(d) { return "translate(" + projection([d.lon, d.lat])[0] + "," + projection([d.lon, d.lat])[1] + ") rotate("+ d.heading+") scale(1.0)"; })
+                                    .attr("fill", muniColor)
+                                    .attr("opacity",0.6);
+                                    // .on('mouseover', muniMouseover)
+                                    // .on('mouseout', muniMouseout);
 
 
-            // if(toggleLiveData==true)
-            //        {
-                       
-            //         var triangles = svg.selectAll("triangles")
-            //                         .append("triangles")
-            //                         .data(liveRoute)
-            //                         .enter()  
-            //                         .append("path")
-            //                         .attr("class","triangle")
-            //                         .attr("d", d3.svg.symbol().type("triangle-up"))
-            //                         .attr("transform", function(d) { return "translate(" + projection([d.lon, d.lat])[0] + "," + projection([d.lon, d.lat])[1] + ") rotate("+ d.heading+") scale(1.0)"; })
-            //                         .attr("fill", 'blue')
-            //                         .attr("opacity",0.5);
-            //         firstDraw = false;                            
-            //        }
 
+          drawSelectedRoutePath();
 
-         
           $( document ).ready(function() {
              window.setInterval(updateLiveBus , 5000); //update every 15 seconds
             });
 
-             function updateLiveBus()
-                      {
-                      if(toggleLiveData==true)
-                         {
-                         //liveRouteLocation= [[-122.44, 37.75],[-123.44, 37.95]];
-                         var epochTime = (new Date).getTime();
-                         console.log("updating:" ,epochTime)
-                         var requestString = 'http://webservices.nextbus.com/service/publicXMLFeed?command=vehicleLocations&a=sf-muni&t=' + String(epochTime);                 
-                         $.ajax(requestString, {            
-                                    dataType:'xml',
-                                    data:{},
-                                    type:'GET',
-                                    success: parseLiveRoute,
-                                    error: function(){console.log("Error: check console for vehicleLocations");}
-                                    });
-
-                         
-                         // console.log("drawSelectedRoutePath drawn" );
-
-                         }
+           function updateLiveBus()
+                    {
+                       var epochTime = (new Date).getTime();
+                       console.log("updating:" ,epochTime)
+                       var requestString = 'http://webservices.nextbus.com/service/publicXMLFeed?command=vehicleLocations&a=sf-muni&t=' + String(epochTime);                 
+                       $.ajax(requestString, {            
+                                  dataType:'xml',
+                                  data:{},
+                                  type:'GET',
+                                  success: parseLiveRoute,
+                                  error: function(){console.log("Error: check console for vehicleLocations");}
+                                  });
                     }
 
            function mouseover(d){     
                       d3.select(this).transition().delay(5).style('fill', highlightColor).style('stroke', highlightColor);
-                      // add neighbourhood name to box
+                      d3.select("#dataDiv").select("text").remove();
+                      d3.select("#dataDiv").select("p").remove();
                       console.log(d.properties);
+                      var nhood = d.properties.NHOOD;
+                      var street = d.properties.STREETNAME;
+
+                      d3.select("#dataDiv").append("text")                       
+                       .attr("x",xMargin)
+                       .attr("y",yMargin)
+                       .attr("class","para")
+                       .style("font-family","sans-serif")
+                       .style("font-size","16px")
+                       .style("text-anchor","left")
+                       .style("fill",'grey')
+                       .text("Neighborhood: " + nhood);
+
+
+                      d3.select("#dataDiv").append("p")                       
+                       .attr("x",xMargin)
+                       .attr("y",yMargin+ 30)
+                       .attr("class","para")
+                       .style("font-family","sans-serif")
+                       .style("font-size","16px")
+                       .style("text-anchor","left")
+                       .style("fill",'grey')
+                       .text( "Street: "+ street);
+                         
+                       //.text("Airbnb X SF Muni\n");
+
                     }
            function mouseout(d){             
-                d3.select(this).transition().delay(5).style('fill', neighborhoodColor).style('stroke', neighborhoodColor);
+                d3.select(this).transition().delay(5).style('fill', neighborhoodColor).style('stroke', neighborhoodColor);           
+                //window.setInterval(function(){d3.select("#dataDiv").select("text").remove();} , 3000); //update every 15 seconds              
               }
             console.log("loadJsonData end");  
 
@@ -240,8 +336,6 @@ function parseAllRoutes(document){
                      };
             routeList.push(object);
             i++;                     
-            //routeList.push({id: i , label: $(this).attr('tag')});           
-            //console.log( $(this).attr('tag'));     
             });
        // console.log("routeList"+ JSON.stringify(routeList) ); 
 
@@ -291,29 +385,25 @@ function parseSelectedRoute(document){
        });       
   });
 
-       drawSelectedRoutePath();       // create paths
+
 }
 
 // run every 15 seconds
   function parseLiveRoute(document){
    //console.log("parseLiveRoute:",document);   
-  // var liveRoute = [];
+  
    liveRoute = [];
-  //d3.selectAll("#triangle").data(liveRoute).exit().remove();
-   
-   
-
    console.log("removed triangles");    
    $(document).find("body").each(function(){               
         $(document).find("vehicle").each(function(){  
             //id route tag lat lon heading      
             liveRouteObject = {
-                                'tag': $(this).attr('tag'),
-                                'heading': $(this).attr('heading'),
-                                'title': $(this).attr('id'),
-                                'lat': $(this).attr('lat'),
-                                'lon': $(this).attr('lon')
-                                }                           
+              'tag': $(this).attr('tag'),
+              'heading': $(this).attr('heading'),
+              'title': $(this).attr('id'),
+              'lat': $(this).attr('lat'),
+              'lon': $(this).attr('lon')
+              }                           
             liveRoute.push(liveRouteObject);
            
             });
@@ -321,29 +411,67 @@ function parseSelectedRoute(document){
       });
   // console.log("liveRoute"+JSON.stringify(liveRoute));                       
 
-   if(firstDraw == false)
-     {
       console.log("firstDraw: "+ firstDraw +"  "+epochTime); 
       //d3.select("svg").remove();
-          //appends 
-         
-         //svg.selectAll("path.triangle").remove(); 
-         console.log("path.triangle removed " );
-
-         var triangles = svg.selectAll("triangles")
-                    .append("triangles")
-                    .data(liveRoute)
-                    .enter()  
-                    .append("path")
-                    .attr("class","triangle")
-                    .attr("d", d3.svg.symbol().type("triangle-up"))
-                    .attr("transform", function(d) { return "translate(" + projection([d.lon, d.lat])[0] + "," + projection([d.lon, d.lat])[1] + ") rotate("+ d.heading+") scale(1.0)"; })
-                    .attr("fill", 'blue')
-                    .attr("opacity",0.5);
+      //appends 
+      d3.selectAll("triangle").remove(); 
+      console.log("path.triangle removed " );
+      var triangles = svg.selectAll("triangles")
+                .data(liveRoute)
+                .append("path")
+                .attr("class","triangle")
+                .attr("d", d3.svg.symbol().type("triangle-up"))
+                .attr("transform", function(d) { return "translate(" + projection([d.lon, d.lat])[0] + "," + projection([d.lon, d.lat])[1] + ") rotate("+ d.heading+") scale(1.0)"; })
+                .attr("fill", 'blue')
+                .attr("opacity",0.5);
       
       console.log("new triangles drawn" );
+    }//end of function
+
+// call from parseSelectedRoute
+
+function drawSelectedRoutePath(){
+
+ console.log("in loop drawSelectedRoutePath: "+ selectedRoutesList.length);
+  
+      
+        for ( var i = 0 ; i < selectedRoutesList.length ; i ++ )
+            {
+            var pathLine = d3.svg.line()
+            .interpolate("linear")
+            .x(function(d) { return projection([d[1], d[0]])[0]; })
+            .y(function(d) { return projection([d[1], d[0]])[1]; });            
+            //console.log(selectedRoutesList[i].selectedRoutePoint);
+            var muniPath = svg.append("path")
+            .attr("d",pathLine(selectedRoutesList[i].selectedRoutePoint))
+            .attr("class","muniPath")
+            .attr("id","muniPaths")
+            .attr("fill","none")
+            .attr("stroke",function(d){return "#"+ selectedRoutesList[i].color;})
+            .style("opacity",0.7)
+            .style("stroke-width",1);
+ 
+          //   console.log(selectedRoutesList[i].selectedRouteStopLocation);  
+          var stops= svg.selectAll("circle.stop")
+                      .data(selectedRoutesList[i].selectedRouteStopLocation)
+                      .enter()
+                      .append("svg:circle")
+                      .attr("class","stops")
+                      .attr("d", path)
+                      .attr("cx", function (d) { return projection([d[1], d[0]])[0]; })
+                      .attr("cy", function (d) { return projection([d[1], d[0]])[1]; })
+                      .attr("r", "3px")
+                      .attr("fill", "none")// change color
+                      .attr("stroke",function(d){return "#"+ selectedRoutesList[i].color; })
+                      .attr("stroke-width",2)
+                      .attr("opacity",1.0);
+            }      
+}
 
 
+
+
+      // update d3 circles
       // svg.selectAll("triangles")
       //             .data(liveRoute)
       //             .transition()
@@ -367,45 +495,5 @@ function parseSelectedRoute(document){
   
   
 
-          }
-    }//end of function
-
-// call from parseSelectedRoute
-
-function drawSelectedRoutePath(){
-
-   console.log("in loop drawSelectedRoutePath: "+ selectedRoutesList.length);
-  
-  if (showRoutePath)
-      {
-        for ( var i = 0 ; i < selectedRoutesList.length ; i ++ )
-            {
-            var pathLine = d3.svg.line()
-            .interpolate("linear")
-            .x(function(d) { return projection([d[1], d[0]])[0]; })
-            .y(function(d) { return projection([d[1], d[0]])[1]; });
-            
-            //console.log(selectedRoutesList[i].selectedRoutePoint);
-
-            var haiyanPath = svg.append("path")
-            .attr("d",pathLine(selectedRoutesList[i].selectedRoutePoint))
-            .attr("class","line");
-
-
-            }
-
-
-      }
-
-}
-
-
-///
-
-// var track = topojson.feature(routeTopology, routeTopology.objects.route);
-
-//     var pathEl = d3.select("body").append("svg").append("path").attr("d", path(track));
-    
-//     var length = pathEl.node().getTotalLength();
 
 
