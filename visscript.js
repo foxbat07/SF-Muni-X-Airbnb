@@ -21,7 +21,7 @@
       var epochTime = (new Date).getTime();
       var width = 1050; // hard coding svg for prototype
       var height = 900;
-      var toggleAirbnb = true;
+      var toggleAirbnb = false;
       var toggleLiveData = true;
       var showRoutePath = true;
       var drawMap = true;
@@ -87,6 +87,7 @@
           .defer(d3.json, "sfmaps/streets.json")
           .defer(d3.json, "airbnbdata/airbnblisting.json")
           .await(loadJsonData)
+
 
 
 
@@ -168,7 +169,7 @@
               toggleAirbnb = !toggleAirbnb;
               // Determine if current airbnb is visible
               var active = airbnbcircle.active ? false : true,
-                  newOpacity = active ? 0 : 0.2;
+                  newOpacity = active ? 0 : 0.1;
               // Hide or show the elements
               d3.selectAll("#airbnbcircle").style("opacity",newOpacity);
 
@@ -208,16 +209,28 @@
           $("button[id|='locationDiv']").click(function() {
 
               var active = muniLocation.active ? false : true;
-              newOpacity = active ? 0 : 0.7;
+              newOpacity = active ? 0 : 0.5;
               // Hide or show the elements
               d3.selectAll("#muniLocation").style("opacity",newOpacity);
               var sel = d3.select("#muniLocation"); // moveToFront;
               sel.moveToFront();
               muniLocation.active = active;
               console.log("locationDiv toggle");
-
           });
 
+
+          // max and min airbnb rates biased for color, reduced range
+          var maxPrice =0.025* (d3.max(airbnblisting, function(d) {return d.price;} ));
+          var minPrice =2*(d3.min(airbnblisting, function(d) {return d.price;} ));
+
+          console.log(maxPrice+ " "+ minPrice);
+
+          var airbnbColorScale =  d3.scale.linear().domain([minPrice,maxPrice])
+                                    .range([d3.rgb("#F7FF00"), d3.rgb('#9E83FF')]);
+
+           // var airbnbColorScale =  d3.scale.threshold().domain([50,100,250,500,750,1000])
+           //                          .range([d3.rgb("#f1eef6"), d3.rgb('#d4b9da'),d3.rgb('#c994c7'),d3.rgb('#df65b0'),d3.rgb('#dd1c77'),d3.rgb('#980043')]);                          
+                                
 
           d3.select("#mapDiv").select("svg").remove();
           svg = d3.select("#mapDiv").append("svg").attr("width", width).attr(
@@ -271,9 +284,11 @@
               .attr("cy", function(d) {
                   return projection([d.longitude, d.latitude])[1];
               })
-              .attr("r", "3px")
-              .attr("fill", airbnbColor)
-              .style("opacity", 0.2);
+              .attr("r", "5px")
+              .attr("fill", function(d) {
+                  return airbnbColorScale(d.price);
+              })
+              .style("opacity", 0);
 
           //console.log("airbnblisting:",airbnblisting)
           //future work: sclae based on ratings, price/night etc 
@@ -289,7 +304,7 @@
               var epochTime = (new Date).getTime();
               console.log("updating:", epochTime)
               var requestString =
-                  'http://webservices.nextbus.com/service/publicXMLFeed?command=vehicleLocations&a=sf-muni&t=' +
+                  'http://webservices.nextbus.com/service/publicXMLFeed?command=vehicleLocations&a=sf-muni&terse&t=' +
                   String(epochTime);
               $.ajax(requestString, {
                   dataType: 'xml',
@@ -306,7 +321,7 @@
           }
 
           function mouseover(d) {
-              d3.select(this).transition().delay(5).style('fill',
+              d3.select(this).transition().style('fill',
                   highlightColor).style('stroke', highlightColor);
               d3.select("#dataDiv").select("text").remove();
               d3.select("#dataDiv").select("p").remove();
@@ -377,10 +392,8 @@
           //selectedRoutesList
           console.log("parseSelectedRoute:", document);
           $(document).find("body").each(function() {
-
               $(document).find("route").each(function() {
-
-                  var selectedRoutePoint = [];
+                  var selectedRoutePath = [];
                   var selectedRouteStop = [];
                   var selectedRouteStopLocation = [];
 
@@ -390,36 +403,39 @@
                       selectedRouteStopLocation.push(
                           [$(this).attr('lat'),$(this).attr('lon')]);
                   });
-
+                  // create multiple paths here.
                   $(document).find("path").each(function() {
+                      var eachPath = [];
                       $(document).find("point").each(
                           function() {
-                              selectedRoutePoint.push([$(this)
-                                      .attr('lat'), $(this).attr('lon')]);
+                              eachPath.push([$(this).attr('lat'), $(this).attr('lon')]);
+                               //console.log(eachPath.length);
                           });
+                      selectedRoutePath.push(eachPath);  //keeps each path seperate
                   });
+                   //console.log(selectedRoutePath.length);             
 
                   object = {
                       'tag': $(this).attr('tag'),
                       'title': $(this).attr('title'),
                       'color': $(this).attr('color'),
-                      'oppositeColor': $(this).attr(
-                          'oppositeColor'),
+                      'oppositeColor': $(this).attr('oppositeColor'),
                       'selectedRouteStopLocation': selectedRouteStopLocation,
                       'selectedRouteStop': selectedRouteStop,
-                      'selectedRoutePoint': selectedRoutePoint
+                      'selectedRoutePath': selectedRoutePath,
+                      'pathNumber': selectedRoutePath.length
                   }
 
                   selectedRoutesList.push(object);
+                  console.log("selectedRoutesPath:"+selectedRoutePath.length);
 
-                  console.log(selectedRoutesList.length);
+                  //console.log("selectedRoutesList.length:"+selectedRoutesList);
+                  //console.log(selectedRoutesList.length);
                   //console.log("selectedRoutesList:"+ JSON.stringify(selectedRoutesList) );
 
               });
           });
-
           drawSelectedRoutePath();
-
       }
 
        // run every 15 seconds
@@ -458,7 +474,7 @@
               //console.log(request);
               $.ajax(request, {
                   dataType: 'xml',
-                  data: {},
+                  data: {}, 
                   type: 'GET',
                   success: parseSelectedRoute,
                   error: function() {
@@ -478,9 +494,10 @@
           d3.selectAll("#muniPaths").remove();
           d3.selectAll("#muniStops").remove();
 
-          console.log("in loop drawSelectedRoutePath: " +
-              selectedRoutesList.length);
+          console.log("number of selected routes: " + selectedRoutesList.length);
           for (var i = 0; i < selectedRoutesList.length; i++) {
+
+
               var pathLine = d3.svg.line()
                   .interpolate("linear")
                   .x(function(d) {
@@ -489,18 +506,28 @@
                   .y(function(d) {
                       return projection([d[1], d[0]])[1];
                   });
-              //console.log(selectedRoutesList[i].selectedRoutePoint);
 
-              var muniPath = svg.append("path")
-                  .attr("d", pathLine(selectedRoutesList[i].selectedRoutePoint))
-                  .attr("class", "muniPath")
-                  .attr("id", "muniPaths")
-                  .style("fill", "none")
-                  .style("stroke", function(d) {
-                      return "#" + selectedRoutesList[i].color;
-                  })
-                  .style("opacity", 0.2)
-                  .style("stroke-width", 2);
+              //console.log(selectedRoutesList[i].selectedRoutePath);
+              //var numberOfPaths =   selectedRoutesList[i].selectedRoutePath.length;
+              //console.log("numberOfPaths:"+ numberOfPaths);
+
+              // for (var j = 0; i < selectedRoutesList[i].pathNumber -1; j++)
+              // {
+              //    console.log("selectedRoutesList[i].selectedRoutePath[j]"+ selectedRoutesList[i].selectedRoutePath[j] );
+
+                    // var muniPath = svg.append("path")
+                    //       .attr("d", pathLine(selectedRoutesList[i].selectedRoutePath))
+                    //       .attr("class", "muniPath")
+                    //       .attr("id", "muniPaths")
+                    //       .style("fill", "none") 
+                    //       .style("stroke", function(d) {
+                    //           return "#" + selectedRoutesList[i].color;
+                    //       })
+                    //       .style("opacity", 0.2)
+                    //       .style("stroke-width", 2); 
+              //}
+                 
+
 
               // uncomment to see path stops
               // console.log(selectedRoutesList[i].selectedRouteStopLocation);  
@@ -549,14 +576,14 @@
                       d.heading + ") scale(1.3)";
               })
               .attr("fill", muniColor)
-              .attr("opacity", 0.8) //;                    
+              .attr("opacity", 0.5) //;                    
               .on("mouseover", function(d) {
                   tip.transition()
                       .duration(100)
                       .style("opacity", .9);
                   tip.text("bus ID: " + d.id + " routeTag: " + d.routeTag +
                           " speed: " + d.speedKmHr + " km/hr")
-                      .style("left", (d3.event.pageX + 10) + "px")
+                      .style("left", (d3.event.pageX + 20) + "px")
                       .style("top", (d3.event.pageY - 20) + "px");
               })
 
